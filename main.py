@@ -1,9 +1,15 @@
 from fastapi import FastAPI
 import httpx
+from pydantic import BaseModel, Field
 
 from dotenv import load_dotenv
 import os
 
+class WeatherResponse(BaseModel):
+    city: str = Field(max_length=30)
+    weather: str = Field(max_length=30)
+    temperature: float= Field(ge=-90.0)
+    feels_temperature: float= Field(le=200.0)
 app = FastAPI()
 
 load_dotenv()
@@ -21,7 +27,6 @@ async def direct_geocoding(city_name: str, limit: int=1) -> tuple:
         response = response.json()
 
     result = (response[0].get("lat"), response[0].get("lon"))
-    print(result)
     return result
 
 @app.get("/{city_name}")
@@ -33,13 +38,11 @@ async def get_weather(city_name: str):
         response = await client.get(url)
         response = response.json()
 
-
-    result = {
-        "name_city": city_name,
-        "weather": response.get("weather")[0].get("main"),
-        "temperature": round(float(response.get("main").get("temp")) - 273.15, 2),
-        "feels_temperature": round(float(response.get("main").get("feels_like")) - 273.15, 2)
-        # "desc": response.get("data")[0].get("weather").get("description"),
-    }
+    result = WeatherResponse(
+        city=city_name,
+        weather=response.get("weather")[0].get("main"),
+        temperature=round(float(response.get("main").get("temp")) - 273.15, 2),
+        feels_temperature=round(float(response.get("main").get("feels_like")) - 273.15, 2)
+    )
 
     return result
