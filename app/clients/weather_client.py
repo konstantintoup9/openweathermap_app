@@ -13,25 +13,31 @@ class WeatherResponse(BaseModel):
     feels_temperature: float= Field(le=200.0)
 
 async def direct_geocoding(city_name: str, limit: int=1) -> tuple:
+
     url = f"http://api.openweathermap.org/geo/1.0/direct?q={city_name}&limit={limit}&appid={owm_api}"
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(url)
+        try:
+            response = await client.get(url)
+        except httpx.RequestError:
+            raise HTTPException(status_code=500, detail="Ошибка сервера погоды")
         response = response.json()
 
-    if len(response) == 0: return -1, -1
+    if len(response) == 0: raise HTTPException(status_code=404, detail="Вы ввели несуществующий город, повторите попытку")
     result = (response[0].get("lat"), response[0].get("lon"))
     return result
 
 
 async def get_weather(city_name: str):
     lat, lon = await direct_geocoding(city_name)
-    if (lat, lon) == (-1, -1): raise HTTPException(status_code=404, detail="Вы ввели несуществующий город, повторите попытку")
 
     url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&units=metric&appid={owm_api}&lang=ru"
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(url)
+        try:
+            response = await client.get(url)
+        except httpx.RequestError:
+            raise HTTPException(status_code=500, detail="Ошибка сервера погоды")
         response = response.json()
 
 
