@@ -2,8 +2,7 @@ from fastapi import FastAPI, HTTPException
 import httpx
 from pydantic import BaseModel, Field
 
-from dotenv import load_dotenv
-import os
+from config import Config
 
 class WeatherResponse(BaseModel):
     city: str = Field(max_length=30)
@@ -12,8 +11,8 @@ class WeatherResponse(BaseModel):
     feels_temperature: float= Field(le=200.0)
 app = FastAPI()
 
-load_dotenv()
-owm_api = os.getenv("OPENWEATHERMAP_API")
+owm_api = Config.load().owm.WEATHERMAP_API.get_secret_value()
+
 @app.get("/health")
 async def health():
     return {"status": "OK"}
