@@ -1,23 +1,20 @@
 import httpx
-from pydantic import BaseModel, Field
+
 from fastapi import HTTPException
 import logging
+from app.schemas import WeatherResponse
 
 from config import Config
+import time
 
 logging.basicConfig(level=logging.INFO)
-
-class WeatherResponse(BaseModel):
-    city: str = Field(max_length=30)
-    weather: str = Field(max_length=30)
-    temperature: float= Field(ge=-90.0)
-    feels_temperature: float= Field(le=200.0)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 async def connect_to_weather_server(url: str):
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(url)
-            response.raise_for_status()  # В теле ответа есть возвращаемый сервером статус
+            response.raise_for_status()  # The response contains the status returned by the server
             data = response.json()
         except httpx.TimeoutException as te:
             logging.error(f"Timeout error")
@@ -25,7 +22,7 @@ async def connect_to_weather_server(url: str):
         except httpx.RequestError as re: # Запрос НЕ ДОШЕЛ до сервера
             logging.error(f"Network error {type(re).__name__}")
             raise HTTPException(status_code=500, detail="Network error")
-        except httpx.HTTPStatusError as exc: # Сервер ответил с плохим кодом
+        except httpx.HTTPStatusError as exc: # The server responded with an error code
             status = exc.response.status_code
             logging.error(f"External API error: {status}")
             match status:
@@ -51,6 +48,7 @@ async def get_weather(city_name: str):
 
     url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&units=metric&appid={Config.load().owm.WEATHERMAP_API.get_secret_value()}&lang=ru"
 
+    time.sleep(5)
     data = await connect_to_weather_server(url=url)
 
     result = WeatherResponse(
@@ -60,4 +58,4 @@ async def get_weather(city_name: str):
         feels_temperature=data.get("main").get("feels_like")
     )
 
-    return result
+    return result.model_dump_json()
