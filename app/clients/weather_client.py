@@ -5,10 +5,19 @@ import logging
 from app.schemas import WeatherResponse
 
 from config import Config
-import time
 
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
+
+def map_weather_response(city_name: str, data: dict) -> WeatherResponse:
+    return WeatherResponse(
+        city=city_name,
+        weather=data.get("weather")[0].get("main"),
+        temperature=data.get("main").get("temp"),
+        feels_temperature=data.get("main").get("feels_like")
+    )
+
+
 
 async def connect_to_weather_server(url: str):
     async with httpx.AsyncClient() as client:
@@ -19,7 +28,7 @@ async def connect_to_weather_server(url: str):
         except httpx.TimeoutException as te:
             logging.error(f"Timeout error")
             raise HTTPException(status_code=504, detail=f"Timeout error")
-        except httpx.RequestError as re: # Запрос НЕ ДОШЕЛ до сервера
+        except httpx.RequestError as re: # The request didn't reach the server
             logging.error(f"Network error {type(re).__name__}")
             raise HTTPException(status_code=500, detail="Network error")
         except httpx.HTTPStatusError as exc: # The server responded with an error code
@@ -45,17 +54,9 @@ async def direct_geocoding(city_name: str, limit: int=1) -> tuple:
 
 async def get_weather(city_name: str):
     lat, lon = await direct_geocoding(city_name)
-
     url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&units=metric&appid={Config.load().owm.WEATHERMAP_API.get_secret_value()}&lang=ru"
 
-    time.sleep(5)
     data = await connect_to_weather_server(url=url)
 
-    result = WeatherResponse(
-        city=city_name,
-        weather=data.get("weather")[0].get("main"),
-        temperature=data.get("main").get("temp"),
-        feels_temperature=data.get("main").get("feels_like")
-    )
-
+    result = map_weather_response(city_name=city_name, data=data)
     return result.model_dump_json()
