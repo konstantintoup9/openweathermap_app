@@ -12,8 +12,14 @@ class OpenWeatherMapConfig(ConfigBase):
 
     WEATHERMAP_API: SecretStr
 
+class RedisConfig(ConfigBase):
+    model_config = SettingsConfigDict(env_prefix="REDIS_")
+
+    HOST: SecretStr
+
 class Config(BaseSettings): # Здесь объединяем все конфиги
     owm: OpenWeatherMapConfig = Field(default_factory=OpenWeatherMapConfig)
+    redis: RedisConfig = Field(default_factory=RedisConfig)
 
     @classmethod
     def load(cls) -> "Config":
