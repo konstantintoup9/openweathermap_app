@@ -5,9 +5,10 @@ import json
 from app.clients.weather_client import get_weather
 import logging
 
+from config import Config
 
 redis_client = aioredis.Redis(
-    host="localhost",
+    host=Config.load().redis.HOST.get_secret_value(),
     port=6379, # default Redis-port, checked in terminal
     db=0,
     decode_responses=True, # return str, not bytes
